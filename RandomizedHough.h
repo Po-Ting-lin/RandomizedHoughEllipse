@@ -6,9 +6,11 @@
 #define RANDOMIZEDHOUGHELLIPSE_RANDOMIZEDHOUGH_H
 
 #include "utils.h"
-
+#include <Eigen/Dense>
+#include <ctime>
 
 using namespace cv;
+
 
 
 class AccumulatorElement{
@@ -46,14 +48,27 @@ protected:
     int cannySobelSize;
 
     vector<Point> PointSelection(vector<Point> v);
+    bool assertCenter(Point &c);
 
-    Point findCenter(vector<Point> threeP, Mat &edge);
+    bool findCenter(vector<Point> &shuffleP, Mat &, Point &center, vector<Point> &OutP);
+    bool findFitPoint(Mat &edge, Point &p, int width, vector<Point> &pt);
+    vector<Point> findIntersection(vector<Line> &t);
+    vector<Line> findBisector(vector<Point> &p, vector<Point> &l);
+    bool findThisCenter(vector<Line> &t, Point &center);
+
+
+    bool findAxis(vector<Point> &threeP, Point &center, double &ax1, double &ax2, double &angle);
+    bool assertEllipse(double PreA, double PreB, double PreC);
+    double getRotationAngle(double PreA, double PreB, double PreC);
+    bool getSemi(double angle, double PreA, double PreC, double &ax1, double &ax2);
 
 
 public:
 
     Mat * phase;
     Mat * mask;
+    Mat * canvas;
+    Mat * canvas2;
 
     // accumulator
     vector<AccumulatorElement> accumulator;
@@ -80,6 +95,7 @@ public:
 
 
 };
+
 
 
 #endif //RANDOMIZEDHOUGHELLIPSE_RANDOMIZEDHOUGH_H

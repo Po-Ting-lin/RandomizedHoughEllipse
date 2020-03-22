@@ -104,11 +104,13 @@ bool RandomizedHough::findCenter(vector<Point> &shuffleP, Mat &edge, Point &cent
 bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1, double &ax2, double &angle) {
     // shift to origin
     for (Point &eachP: threeP){
-        eachP = eachP - center;
+        eachP.x = eachP.x - center.x;
+        eachP.y = eachP.y - center.y;
     }
 
-    Eigen::Matrix3f A;
-    Eigen::Vector3f b;
+    // find A B C
+    Eigen::Matrix3d A;
+    Eigen::Vector3d b;
     double PreA=0, PreB=0, PreC=0;
     for (int i=0; i<3; i++) {
         A(i, 0) = (double) threeP[i].x * threeP[i].x;
@@ -116,17 +118,23 @@ bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1
         A(i, 2) = (double) threeP[i].y * threeP[i].y;
         b(i) = 1.0;
     }
-    Eigen::Vector3f x = A.colPivHouseholderQr().solve(b);
+    Eigen::Vector3d x = A.colPivHouseholderQr().solve(b);
     PreA = x(0);
     PreB = x(1);
     PreC = x(2);
     cout << PreA << ",";
     cout << PreB << ",";
     cout << PreC << "," << endl;
+
+    // is valid ellipse?
     if (!assertEllipse(PreA, PreB, PreC)){
         return false;
     }
+
+    // calculate angle
     angle = getRotationAngle(PreA, PreB, PreC); // assign angle
+
+    // calculate semi axis
     if (!getSemi(angle, PreA, PreB, ax1, ax2)){ // assign ax1 ax2
         return false;
     }
@@ -157,8 +165,8 @@ bool RandomizedHough::findFitPoint(Mat &edge, Point &p, int width, vector<Point>
 }
 
 vector<Point> RandomizedHough::findIntersection(vector<Line> &t) {
-    Eigen::Matrix2f A;
-    Eigen::Vector2f b;
+    Eigen::Matrix2d A;
+    Eigen::Vector2d b;
     vector<Point> intersection;
     for(int j=0; j<2; j++) {
         for (int i=0; i<2; i++) {
@@ -166,7 +174,7 @@ vector<Point> RandomizedHough::findIntersection(vector<Line> &t) {
             A(i, 1) = -1;
             b(i) = -t[i+j].c;
         }
-        Eigen::Vector2f x = A.colPivHouseholderQr().solve(b);
+        Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
         intersection.emplace_back(x(0), x(1));
         cout << "intersection " << x(0) << ", " << x(1) << endl;
     }
@@ -186,14 +194,14 @@ vector<Line> RandomizedHough::findBisector(vector<Point> &p, vector<Point> &l) {
 }
 
 bool RandomizedHough::findThisCenter(vector<Line> &t, Point &center) {
-    Eigen::Matrix2f A;
-    Eigen::Vector2f b;
+    Eigen::Matrix2d A;
+    Eigen::Vector2d b;
     for (int i=0; i<2; i++) {
         A(i, 0) = t[i].m;
         A(i, 1) = -1;
         b(i) = -t[i].c;
     }
-    Eigen::Vector2f x = A.colPivHouseholderQr().solve(b);
+    Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
     center.x = x(0);
     center.y = x(1);
     cout << "center: " << x(0) << ", " << x(1) << endl;
@@ -217,15 +225,15 @@ double RandomizedHough::getRotationAngle(double PreA, double PreB, double PreC) 
 }
 
 bool RandomizedHough::getSemi(double angle, double PreA, double PreC, double &ax1, double &ax2) {
-    Eigen::Matrix2f A;
-    Eigen::Vector2f b;
+    Eigen::Matrix2d A;
+    Eigen::Vector2d b;
     A(0, 0) = sin(angle) * sin(angle);
     A(0, 1) = cos(angle) * cos(angle);
     A(1, 0) = cos(angle) * cos(angle);
     A(1, 1) = sin(angle) * sin(angle);
     b(0) = PreA;
     b(1) = PreC;
-    Eigen::Vector2f x = A.colPivHouseholderQr().solve(b);
+    Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
     if (x(0) > 0 && x(1) > 0){
         // TODO: wrong axis
         ax1 = 1.0/sqrt(min(x(0), x(1))); // semi major
@@ -293,7 +301,7 @@ void RandomizedHough::run(Mat &p, Mat &m) {
             continue;
         }
 
-        ellipse(*canvas, center, Size(ax1, ax2), angle*M_PI/180.0, 0, 360, 240, 2);
+        ellipse(*canvas, center, Size(ax1, ax2), angle*180.0/M_PI, 0, 360, 240, 1);
 
         displayImage(*canvas, true);
         break; // Temporary set

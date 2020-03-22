@@ -138,6 +138,12 @@ bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1
     if (!getSemi(angle, PreA, PreC, ax1, ax2)){ // assign ax1 ax2
         return false;
     }
+
+    // assert constraint
+    if (!assertAxisFlatten(ax1, ax2)){
+        return false;
+    }
+
     cout << "angle: " << angle << endl;
     cout << "semi axis: " << ax1 << ", " << ax2 << endl;
     return true;
@@ -301,6 +307,14 @@ void RandomizedHough::run(Mat &p, Mat &m) {
             continue;
         }
 
+        // assert
+        Candidate candi(center, ax1, ax2, angle);
+        if (isOutOfMask(candi)){
+            // this ellipse is out of mask;
+            canvas2->copyTo(*canvas); // clean canvas
+            continue;
+        }
+
         ellipse(*canvas, center, Size(ax1, ax2), angle*180.0/M_PI, 0, 360, 240, 1);
 
         displayImage(*canvas, true);
@@ -316,7 +330,6 @@ bool RandomizedHough::assertCenter(Point &c) {
     vector<Point> locations;
     TestImage.at<uchar>(c.y, c.x) = 255;
 //    displayImage(*mask, true);
-//
 //    displayImage(TestImage, true);
     bitwise_and(TestImage, TestImage, OutImage, *mask);
     findNonZero(OutImage, locations);
@@ -325,4 +338,25 @@ bool RandomizedHough::assertCenter(Point &c) {
 
 bool RandomizedHough::assertEllipse(double PreA, double PreB, double PreC) {
     return (PreA * PreC - PreB * PreB) > 0;
+}
+
+bool RandomizedHough::assertAxisFlatten(double ax1, double ax2) {
+    if (ax1 < majorBoundMin || ax1 > majorBoundMax) return false;
+    if (ax2 < minorBoundMin || ax2 > minorBoundMax) return false;
+    double flattening = (ax1 - ax2) / ax1;
+    return flattening <= flatteningBound;
+}
+
+bool RandomizedHough::isOutOfMask(Candidate &e) {
+    Mat TestImage(mask->size(), 0, Scalar(0));
+    Mat OutImage(mask->size(), 0, Scalar(0));
+    Mat AntiMask(mask->size(), 0, Scalar(0));
+    vector<Point> locations;
+    ellipse(TestImage, e.center, Size(e.semiMajor, e.semiMinor), e.angle*180.0/M_PI, 0, 360, 255, 1);
+    bitwise_not(*mask, AntiMask);
+    displayImage(AntiMask, true);
+    bitwise_and(TestImage, TestImage, OutImage, AntiMask);
+    displayImage(OutImage, true);
+    findNonZero(OutImage, locations);
+    return !locations.empty();
 }

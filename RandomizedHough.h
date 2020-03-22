@@ -13,18 +13,16 @@ using namespace cv;
 
 
 
-class AccumulatorElement{
+class Candidate{
 public:
-    int centerI;
-    int centerJ;
-    int semiMajor;
-    int semiMinor;
+    Point center;
+    double semiMajor;
+    double semiMinor;
     double angle;
     double score;
 
-    AccumulatorElement(int centerI, int centerJ, int semiMajor, int semiMinor, double angle){
-        this->centerI = centerI;
-        this->centerJ = centerJ;
+    Candidate(Point &center, double semiMajor, double semiMinor, double angle){
+        this->center = center;
         this->semiMajor = semiMajor;
         this->semiMinor = semiMinor;
         this->angle = angle;
@@ -47,7 +45,6 @@ protected:
     double cannyT2;
     int cannySobelSize;
 
-    vector<Point> PointSelection(vector<Point> v);
     bool assertCenter(Point &c);
 
     bool findCenter(vector<Point> &shuffleP, Mat &, Point &center, vector<Point> &OutP);
@@ -61,6 +58,9 @@ protected:
     bool assertEllipse(double PreA, double PreB, double PreC);
     double getRotationAngle(double PreA, double PreB, double PreC);
     bool getSemi(double angle, double PreA, double PreC, double &ax1, double &ax2);
+    bool assertAxisFlatten(double ax1, double ax2);
+    bool isOutOfMask(Candidate &e);
+
 
 
 public:
@@ -71,7 +71,7 @@ public:
     Mat * canvas2;
 
     // accumulator
-    vector<AccumulatorElement> accumulator;
+    vector<Candidate> accumulator;
 
     // debug
     bool PlotMode;

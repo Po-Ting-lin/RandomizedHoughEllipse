@@ -135,7 +135,7 @@ bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1
     angle = getRotationAngle(PreA, PreB, PreC); // assign angle
 
     // calculate semi axis
-    if (!getSemi(angle, PreA, PreB, ax1, ax2)){ // assign ax1 ax2
+    if (!getSemi(angle, PreA, PreC, ax1, ax2)){ // assign ax1 ax2
         return false;
     }
     cout << "angle: " << angle << endl;

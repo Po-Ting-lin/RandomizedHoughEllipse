@@ -74,8 +74,6 @@ bool RandomizedHough::findCenter(vector<Point> &shuffleP, Mat &edge, Point &cent
     }
 }
 
-
-// TODO: finish find axis
 bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1, double &ax2, double &angle) {
     // shift to origin
     for (Point &eachP: threeP){

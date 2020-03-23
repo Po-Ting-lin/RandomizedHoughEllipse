@@ -26,10 +26,18 @@ public:
         this->semiMajor = semiMajor;
         this->semiMinor = semiMinor;
         this->angle = angle;
-        this->score = 0.0;
+        this->score = 1.0;
+    }
+
+    void averageWith(Candidate &c){
+        center.x = (c.center.x + center.x*score) / (score + 1.0);
+        center.y = (c.center.y + center.y*score) / (score + 1.0);
+        semiMajor = (c.semiMajor + semiMajor*score) / (score + 1.0);
+        semiMinor = (c.semiMinor + semiMinor*score) / (score + 1.0);
+        angle = (c.angle + angle*score) / (score + 1.0);
+        score += 1;
     }
 };
-
 
 class RandomizedHough {
 protected:
@@ -61,14 +69,16 @@ protected:
     bool assertAxisFlatten(double ax1, double ax2);
     bool isOutOfMask(Candidate &e);
 
+    bool canAccumulate(Candidate c, int &idx);
+    void displayAccumulator();
+
 
 
 public:
-
     Mat * phase;
     Mat * mask;
     Mat * canvas;
-    Mat * canvas2;
+    Mat * origin;
 
     // accumulator
     vector<Candidate> accumulator;
@@ -78,15 +88,15 @@ public:
 
     RandomizedHough(bool PlotMode=false){
         // TODO: parameter selection
-        maxIter = 800;
-        majorBoundMax = 250;
-        majorBoundMin = 60;
-        minorBoundMax = 250;
-        minorBoundMin = 60;
+        maxIter = 5000;
+        majorBoundMax = 100;
+        majorBoundMin = 25;
+        minorBoundMax = 100;
+        minorBoundMin = 20;
         flatteningBound = 0.8;
         fittingArea = 7;
-        cannyT1 = 60;
-        cannyT2 = 100;
+        cannyT1 = 50;
+        cannyT2 = 90;
         cannySobelSize = 3;
         PlotMode = PlotMode;
     };
@@ -96,6 +106,12 @@ public:
 
 };
 
+
+struct compareScore{
+    inline bool operator() (const Candidate &c1, const Candidate &c2){
+        return (c1.score > c2.score);
+    }
+};
 
 
 #endif //RANDOMIZEDHOUGHELLIPSE_RANDOMIZEDHOUGH_H

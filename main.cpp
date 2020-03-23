@@ -14,7 +14,7 @@ int main() {
     mask = imread("/home/ptl/Downloads/mask.png", 0);
 //    displayImage(image);
 
-    RandomizedHough r;
+    RandomizedHough r(false);
     r.run(image, mask);
 
 

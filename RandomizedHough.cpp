@@ -6,39 +6,11 @@
 #include "HoughException.h"
 #include <algorithm>
 
-
-//vector<Point> RandomizedHough::PointSelection(vector<Point> v) {
-//    // copy v
-//
-//    vector<Point> output;
-//
-//    // random seed
-//    srand(time(nullptr));
-//
-//    for (int i=0;i<3;i++){
-//
-//
-//        // range from 0 to v.size
-//        int ranNumber = rand() % (v.size() + 1);
-//
-//        output.push_back(v[ranNumber]);
-//
-//        // not repeated selection
-//        v.erase(find(v.begin(),v.end(),v[ranNumber]));
-//
-//        std::cout << "random number: "<< ranNumber << endl;
-//    }
-//    return output;
-//}
-
-// TODO: finish find center
 bool RandomizedHough::findCenter(vector<Point> &shuffleP, Mat &edge, Point &center, vector<Point> &OutP) {
     vector<Point> chosenP;
     vector<Line> tanLine;
     vector<Point> intersection;
     vector<Line> bisector;
-
-
     int w = fittingArea/2;
 
     for (Point &eachP: shuffleP){
@@ -56,8 +28,11 @@ bool RandomizedHough::findCenter(vector<Point> &shuffleP, Mat &edge, Point &cent
             // vertical tanLine
             continue;
         }
-        cout << "chosenP : " << eachP.x << " " << eachP.y << endl;
-        cout << "tanLine: " << l.m << " " << l.c << endl;
+
+        if (PlotMode) {
+            cout << "chosenP : " << eachP.x << " " << eachP.y << endl;
+            cout << "tanLine: " << l.m << " " << l.c << endl;
+        }
 
         tanLine.push_back(l);
         chosenP.push_back(eachP);
@@ -68,24 +43,24 @@ bool RandomizedHough::findCenter(vector<Point> &shuffleP, Mat &edge, Point &cent
     }
 
     // three line -> two intersection
-    assert(tanLine.size() == 3);
     intersection = findIntersection(tanLine);
 
     // find bisector
-    assert(intersection.size() == 2);
     bisector = findBisector(chosenP, intersection);
 
 
     /* ********************* canvas start ******************** */
-    for (Line ii: tanLine){
-        drawFullImageLine(*canvas, ii.m, ii.c, 100);
-    }
-    for (Point &pp: chosenP){
-        Point ppp(pp.y, pp.x);
-        cv::circle(*canvas, pp, 2, 100, -1); // black (x, y)
-    }
-    for (Line &ll: bisector){
-        drawFullImageLine(*canvas, ll.m, ll.c, 50);
+    if (PlotMode) {
+        for (Line ii: tanLine) {
+            drawFullImageLine(*canvas, ii.m, ii.c, 100);
+        }
+        for (Point &pp: chosenP) {
+            Point ppp(pp.y, pp.x);
+            cv::circle(*canvas, pp, 2, 100, -1); // black (x, y)
+        }
+        for (Line &ll: bisector) {
+            drawFullImageLine(*canvas, ll.m, ll.c, 50);
+        }
     }
     /* ********************* canvas end ********************** */
 
@@ -122,9 +97,6 @@ bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1
     PreA = x(0);
     PreB = x(1);
     PreC = x(2);
-    cout << PreA << ",";
-    cout << PreB << ",";
-    cout << PreC << "," << endl;
 
     // is valid ellipse?
     if (!assertEllipse(PreA, PreB, PreC)){
@@ -144,8 +116,10 @@ bool RandomizedHough::findAxis(vector<Point> &threeP, Point &center, double &ax1
         return false;
     }
 
-    cout << "angle: " << angle << endl;
-    cout << "semi axis: " << ax1 << ", " << ax2 << endl;
+    if (PlotMode) {
+        cout << "angle: " << angle << endl;
+        cout << "semi axis: " << ax1 << ", " << ax2 << endl;
+    }
     return true;
 }
 
@@ -182,7 +156,9 @@ vector<Point> RandomizedHough::findIntersection(vector<Line> &t) {
         }
         Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
         intersection.emplace_back(x(0), x(1));
-        cout << "intersection " << x(0) << ", " << x(1) << endl;
+        if (PlotMode) {
+            cout << "intersection " << x(0) << ", " << x(1) << endl;
+        }
     }
     return intersection;
 }
@@ -194,7 +170,9 @@ vector<Line> RandomizedHough::findBisector(vector<Point> &p, vector<Point> &l) {
         double m = (double) (mid.y - l[i].y) / (double) (mid.x - l[i].x);
         double c = (double) (mid.x*l[i].y - l[i].x*mid.y) / (double) (mid.x - l[i].x);
         Bisector.emplace_back(m,c);
-        cout << "Bisector " << m << ", " << c << endl;
+        if (PlotMode){
+            cout << "Bisector " << m << ", " << c << endl;
+        }
     }
     return Bisector;
 }
@@ -210,8 +188,10 @@ bool RandomizedHough::findThisCenter(vector<Line> &t, Point &center) {
     Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
     center.x = x(0);
     center.y = x(1);
-    cout << "center: " << x(0) << ", " << x(1) << endl;
     if (isnan(x(0)) || isnan(x(1))) return false;
+    if (PlotMode) {
+        cout << "center: " << x(0) << ", " << x(1) << endl;
+    }
     return assertCenter(center);
 }
 
@@ -241,7 +221,6 @@ bool RandomizedHough::getSemi(double angle, double PreA, double PreC, double &ax
     b(1) = PreC;
     Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
     if (x(0) > 0 && x(1) > 0){
-        // TODO: wrong axis
         ax1 = 1.0/sqrt(min(x(0), x(1))); // semi major
         ax2 = 1.0/sqrt(max(x(0), x(1))); // semi minor
         return true;
@@ -249,6 +228,41 @@ bool RandomizedHough::getSemi(double angle, double PreA, double PreC, double &ax
     else{
         return false;
     }
+}
+
+
+bool RandomizedHough::canAccumulate(Candidate c, int &idx) {
+    if (accumulator.empty()) return false;
+    for (int i=0; i<accumulator.size(); i++){
+        Candidate old = accumulator[i];
+        double CenterDist = sqrt(pow((old.center.x - c.center.x), 2) + pow((old.center.y - c.center.y), 2));
+        double AngleDiff = abs(old.angle - c.angle);
+        double Angle180 = (c.angle > 0)? c.angle - M_PI: c.angle + M_PI;
+        double AngleDiff180 = abs(old.angle - Angle180);
+        double AngleDist = min(AngleDiff, Angle180);
+        double SemiMajorDist = abs(old.semiMajor - c.semiMajor);
+        double SemiMinorDist = abs(old.semiMinor - c.semiMinor);
+        if (CenterDist < 5 && AngleDist < M_PI/18.0 && SemiMajorDist < 10 && SemiMinorDist < 10){
+            idx = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+void RandomizedHough::displayAccumulator() {
+    cout << "********** Accumulator ***********" << endl;
+    int count = 0;
+    if (accumulator.empty()) return;
+    for (Candidate &c: accumulator){
+        cout << "Center: " << c.center << "  ";
+        cout << "Semi axis: [" << c.semiMajor << ", " << c.semiMinor << "]  ";
+        cout << "Angle: " << c.angle << " ";
+        cout << "Score: " << c.score << endl;
+        count++;
+        if (count > 15) break;
+    }
+    cout << "**********************************" << endl;
 }
 
 
@@ -270,14 +284,15 @@ void RandomizedHough::run(Mat &p, Mat &m) {
     // canvas
     Mat canvasImage, canvasImage2;
     canvas = &canvasImage;
-    canvas2 = &canvasImage2;
+    origin = &canvasImage2;
     clean.copyTo(*canvas);
-    clean.copyTo(*canvas2);
+    clean.copyTo(*origin);
 
     // load points into locations
     findNonZero(clean, locations);
-    cout << "length of locations: " << locations.size() << endl;
-
+    if (PlotMode) {
+        cout << "length of locations: " << locations.size() << endl;
+    }
     if (locations.size() < 3) throw NoEdgeExcception();
 
     // main loop
@@ -295,42 +310,62 @@ void RandomizedHough::run(Mat &p, Mat &m) {
 
         // find center
         if (!findCenter(shuffleP, edgeImage, center, threePoint)){
+            if (PlotMode) origin->copyTo(*canvas); // clean canvas
             // invalid center
-            canvas2->copyTo(*canvas); // clean canvas
             continue;
         }
 
         // find semi axis
         if (!findAxis(threePoint, center, ax1, ax2, angle)){
+            if (PlotMode) origin->copyTo(*canvas); // clean canvas
             // invalid axis
-            canvas2->copyTo(*canvas); // clean canvas
             continue;
         }
 
         // assert
         Candidate candi(center, ax1, ax2, angle);
         if (isOutOfMask(candi)){
+            if (PlotMode) origin->copyTo(*canvas); // clean canvas
             // this ellipse is out of mask;
-            canvas2->copyTo(*canvas); // clean canvas
             continue;
         }
 
-        ellipse(*canvas, center, Size(ax1, ax2), angle*180.0/M_PI, 0, 360, 240, 1);
+        // display ellipse
+        if (PlotMode){
+            ellipse(*canvas, center, Size(ax1, ax2), angle*180.0/M_PI, 0, 360, 240, 1);
+        }
 
-        displayImage(*canvas, true);
-        break; // Temporary set
+        // accumulate
+        int idx = -1;
+        if (canAccumulate(candi, idx)){
+            // average weight
+            accumulator[idx].averageWith(candi);
+        }
+        else{
+            // append candidate
+            accumulator.emplace_back(center, ax1, ax2, angle);
+        }
+        if (PlotMode) break;
     }
 
+    // sort accumulator
+    sort(accumulator.begin(), accumulator.end(), compareScore());
+    displayAccumulator();
+
+    // best candidate
+    Candidate best = accumulator[0];
+    ellipse(*canvas, best.center, Size(best.semiMajor, best.semiMinor), best.angle*180.0/M_PI, 0, 360, 240, 1);
+    displayImage(*canvas, true);
 }
 
 /* assert function */
 bool RandomizedHough::assertCenter(Point &c) {
+    if (c.x >= phase->cols || c.x < 0) return false;
+    if (c.y >= phase->rows || c.y < 0) return false;
     Mat TestImage(mask->size(), 0, Scalar(0));
     Mat OutImage(mask->size(), 0, Scalar(0));
     vector<Point> locations;
     TestImage.at<uchar>(c.y, c.x) = 255;
-//    displayImage(*mask, true);
-//    displayImage(TestImage, true);
     bitwise_and(TestImage, TestImage, OutImage, *mask);
     findNonZero(OutImage, locations);
     return !locations.empty();
@@ -354,9 +389,7 @@ bool RandomizedHough::isOutOfMask(Candidate &e) {
     vector<Point> locations;
     ellipse(TestImage, e.center, Size(e.semiMajor, e.semiMinor), e.angle*180.0/M_PI, 0, 360, 255, 1);
     bitwise_not(*mask, AntiMask);
-    displayImage(AntiMask, true);
     bitwise_and(TestImage, TestImage, OutImage, AntiMask);
-    displayImage(OutImage, true);
     findNonZero(OutImage, locations);
-    return !locations.empty();
+    return !locations.empty(); // if empty, notOutOfMask(false)
 }

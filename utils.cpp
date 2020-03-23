@@ -69,13 +69,13 @@ bool fitPoints(vector<cv::Point> &pts, Line &line) {
     }
     double xMean = sumX / nPoints;
     double yMean = sumY / nPoints;
-    cout << "xM, yM" << xMean << " " << yMean << endl;
+//    cout << "xM, yM" << xMean << " " << yMean << endl;
     double denominator = sumX2 - sumX * xMean;
     // You can tune the eps (1e-7) below for your specific task
     if( std::fabs(denominator) < 1e-7 ) {
         // Fail: it seems a vertical line
         // TODO make vertical line be possible
-        cout << "fitPoints: denominator two small" << denominator << endl;
+//        cout << "fitPoints: denominator two small" << endl;
         return false;
     }
     // slope

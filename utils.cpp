@@ -6,9 +6,6 @@
 #include <cmath>
 #include <vector>
 
-
-
-
 void displayImage(const cv::Mat &image, bool mag){
     cv::Mat Out;
     if (mag){

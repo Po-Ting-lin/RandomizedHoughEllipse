@@ -12,7 +12,6 @@
 using namespace cv;
 
 
-
 class Candidate{
 public:
     Point center;
@@ -54,13 +53,13 @@ protected:
     int cannySobelSize;
 
     bool assertCenter(Point &c);
+    bool assertInput();
 
     bool findCenter(vector<Point> &shuffleP, Mat &, Point &center, vector<Point> &OutP);
     bool findFitPoint(Mat &edge, Point &p, int width, vector<Point> &pt);
     vector<Point> findIntersection(vector<Line> &t);
     vector<Line> findBisector(vector<Point> &p, vector<Point> &l);
     bool findThisCenter(vector<Line> &t, Point &center);
-
 
     bool findAxis(vector<Point> &threeP, Point &center, double &ax1, double &ax2, double &angle);
     bool assertEllipse(double PreA, double PreB, double PreC);
@@ -90,10 +89,10 @@ public:
         // TODO: parameter selection
         maxIter = 5000;
         majorBoundMax = 100;
-        majorBoundMin = 25;
+        majorBoundMin = 45;
         minorBoundMax = 100;
-        minorBoundMin = 20;
-        flatteningBound = 0.8;
+        minorBoundMin = 40;
+        flatteningBound = 0.4;
         fittingArea = 7;
         cannyT1 = 50;
         cannyT2 = 90;

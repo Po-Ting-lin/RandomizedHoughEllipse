@@ -270,6 +270,7 @@ void RandomizedHough::run(Mat &p, Mat &m) {
     // load image
     phase = &p;
     mask = &m;
+    assertInput();
 
     // canny
     Mat edgeImage;
@@ -277,7 +278,7 @@ void RandomizedHough::run(Mat &p, Mat &m) {
     Canny(*phase, edgeImage, cannyT1, cannyT2, cannySobelSize);
     // apply mask
     bitwise_and(edgeImage, edgeImage, clean, *mask);
-    displayImage(clean);
+//    displayImage(clean);
 
     // canvas
     Mat canvasImage, canvasImage2;
@@ -291,7 +292,7 @@ void RandomizedHough::run(Mat &p, Mat &m) {
     if (PlotMode) {
         cout << "length of locations: " << locations.size() << endl;
     }
-    if (locations.size() < 3) throw NoEdgeExcception();
+    if (locations.size() < 3) throw NoEdgeException();
 
     // main loop
     for (int i=0; i<maxIter; i++){
@@ -348,15 +349,26 @@ void RandomizedHough::run(Mat &p, Mat &m) {
 
     // sort accumulator
     sort(accumulator.begin(), accumulator.end(), compareScore());
-    displayAccumulator();
+//    displayAccumulator();
 
     // best candidate
     Candidate best = accumulator[0];
-    ellipse(*canvas, best.center, Size(best.semiMajor, best.semiMinor), best.angle*180.0/M_PI, 0, 360, 240, 1);
-    displayImage(*canvas, true);
+    ellipse(*phase, best.center, Size(best.semiMajor, best.semiMinor), best.angle*180.0/M_PI, 0, 360, 240, 1);
+    displayImage(*phase);
 }
 
-/* assert function */
+/********************* assert function ****************************/
+bool RandomizedHough::assertInput() {
+    // phase
+    if (phase->empty()) throw EmptyException("phase");
+    if (phase->type() != 0) throw InputException("phase");
+
+    // mask
+    if (mask->empty()) throw EmptyException("mask");
+    if (mask->type() != 0) throw InputException("mask");
+}
+
+
 bool RandomizedHough::assertCenter(Point &c) {
     if (c.x >= phase->cols || c.x < 0) return false;
     if (c.y >= phase->rows || c.y < 0) return false;

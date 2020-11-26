@@ -5,6 +5,7 @@
 
 # Customized
 **.sln
+**.vcxproj
 
 # User-specific files
 *.rsuser

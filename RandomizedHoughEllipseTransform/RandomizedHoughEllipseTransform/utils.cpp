@@ -125,3 +125,18 @@ void drawFullImageLine(cv::Mat& img, double slope, double intercept, cv::Scalar 
     }
     cv::line(img, p, q, color, 1);
 }
+
+void drawPoint(cv::Mat& img, int x, int y, cv::Scalar color) {
+    if (x < img.cols && y < img.rows) {
+        cv::Point point(x, y);
+        cv::circle(img, point, 2, color, 3);
+    }
+}
+
+void drawText(cv::Mat& img, int x, int y, std::string text) {
+    if (x < img.cols && y < img.rows) {
+        cv::Point point(x, y);
+        cv::String input_string(text);
+        cv::putText(img, input_string, point, cv::FONT_HERSHEY_SIMPLEX, 0.5, 255);
+    }
+}

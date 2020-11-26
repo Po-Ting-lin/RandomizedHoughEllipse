@@ -20,7 +20,7 @@ int main() {
         return -1;
     }
 
-    displayImage(image);
+    //displayImage(image);
 
 
     // test

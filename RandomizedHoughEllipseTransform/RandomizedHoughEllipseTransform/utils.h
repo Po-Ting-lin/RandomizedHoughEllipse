@@ -45,4 +45,6 @@ bool fitPoints(std::vector<cv::Point>& pts, Line& line);
 std::string type2str(int type);
 
 void drawFullImageLine(cv::Mat& img, double slope, double intercept, cv::Scalar color);
+void drawPoint(cv::Mat& img, int x, int y, cv::Scalar color);
+void drawText(cv::Mat& img, int x, int y, std::string text);
 

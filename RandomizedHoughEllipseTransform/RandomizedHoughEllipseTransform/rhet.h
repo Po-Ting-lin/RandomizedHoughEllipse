@@ -47,7 +47,7 @@ protected:
     double cannyT2;
     int cannySobelSize;
 
-    bool assertCenter(cv::Point& c);
+    inline bool assertCenter(cv::Point& c);
     bool assertInput();
 
     bool findCenter(std::vector<cv::Point>& shuffleP, cv::Mat&, cv::Point& center, std::vector<cv::Point>& OutP);
@@ -57,10 +57,10 @@ protected:
     bool findThisCenter(std::vector<Line>& t, cv::Point& center);
 
     bool findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle);
-    bool assertEllipse(double PreA, double PreB, double PreC);
     double getRotationAngle(double PreA, double PreB, double PreC);
     bool getSemi(double angle, double PreA, double PreC, double& ax1, double& ax2);
-    bool assertAxisFlatten(double ax1, double ax2);
+    inline bool assertEllipse(double PreA, double PreB, double PreC);
+    inline bool assertAxisFlatten(double ax1, double ax2);
     bool isOutOfMask(Candidate& e);
 
     bool canAccumulate(Candidate c, int& idx);
@@ -80,19 +80,19 @@ public:
     // debug
     bool PlotMode;
 
-    RandomizedHough(bool PlotMode = false) {
+    explicit RandomizedHough(bool plotMode) {
         // TODO: parameter selection
-        maxIter = 5000;
+        maxIter = 4000;
         majorBoundMax = 100;
         majorBoundMin = 45;
         minorBoundMax = 100;
         minorBoundMin = 40;
         flatteningBound = 0.4;
         fittingArea = 7;
-        cannyT1 = 50;
-        cannyT2 = 90;
+        cannyT1 = 70;
+        cannyT2 = 120;
         cannySobelSize = 3;
-        PlotMode = PlotMode;
+        PlotMode = plotMode;
     };
 
     void run(cv::Mat& phase, cv::Mat& mask);

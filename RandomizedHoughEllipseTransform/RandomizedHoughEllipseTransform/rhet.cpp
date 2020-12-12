@@ -1,36 +1,33 @@
 #include "rhet.h"
 #include "rhet_exception.h"
 
-#define ERROR_VERBOSE false
-#define PLOT false
 
 bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& edgeImage, cv::Point& center, std::vector<cv::Point>& pointOnEllipse) {
     std::vector<cv::Point> chosen_point;
     std::vector<Line> tan_line;
     std::vector<cv::Point> intersection;
     std::vector<Line> bisector;
-    int width = fittingArea / 2;
+    int width = _fittingArea / 2;
 
     for (cv::Point& current_point : shufflePoint) {
         // loop crop image, find where == 255
         std::vector<cv::Point> fit_point;
         if (!findFitPoint(edgeImage, current_point, width, fit_point)) {
-#if ERROR_VERBOSE
+#if VERBOSE_MODE
             printf("Fitting points are less than two!\n");
 #endif
             continue;
         }
 
-        // fitting
         Line line(0.0, 0.0);
-        if (!fitPoints(fit_point, line)) {
-#if ERROR_VERBOSE
+        if (!findfittingPoints(fit_point, line)) {
+#if VERBOSE_MODE
             printf("Vertical tanLine!\n");
 #endif
             continue;
         }
 
-#if ERROR_VERBOSE
+#if VERBOSE_MODE
             std::cout << "current_point : " << current_point.x << " " << current_point.y << std::endl;
             std::cout << "tan_line: " << line.m << " " << line.c << std::endl;
 #endif
@@ -38,18 +35,10 @@ bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& 
         tan_line.push_back(line);
         chosen_point.push_back(current_point);
 
-        if (tan_line.size() == 3) {
-            break;
-        }
+        if (tan_line.size() == 3) break;
     }
-
-    // three line -> two intersection
     intersection = findIntersection(tan_line);
-
-    // find bisector
     bisector = findBisector(chosen_point, intersection);
-
-    // update output
     bool is_success = false;
     if (findThisCenter(bisector, center)) {
         pointOnEllipse.assign(chosen_point.begin(), chosen_point.end());
@@ -57,7 +46,7 @@ bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& 
     }
     
     if (is_success) {
-#if PLOT
+#if PLOT_MODE
         cv::Mat debug_black;
         edgeImage.copyTo(debug_black);
         for (int i = 0; i < chosen_point.size(); i++) {
@@ -98,31 +87,18 @@ bool RandomizedHough::findAxis(std::vector<cv::Point>& threeP, cv::Point& center
     PreB = x(1);
     PreC = x(2);
 
-    // is valid ellipse?
-    if (!assertEllipse(PreA, PreB, PreC)) {
-        return false;
-    }
+    if (!IsEllipse(PreA, PreB, PreC)) return false;
+    angle = getRotationAngle(PreA, PreB, PreC);
+    if (!getSemiAxis(angle, PreA, PreC, ax1, ax2)) return false;
+    if (!isValidAxisFlattening(ax1, ax2)) return false;
+    if (!isValidAxisLength(ax1, ax2)) return false;
 
-    // calculate angle
-    angle = getRotationAngle(PreA, PreB, PreC); // assign angle
-
-    // calculate semi axis
-    if (!getSemi(angle, PreA, PreC, ax1, ax2)) { // assign ax1 ax2
-        return false;
-    }
-
-    // assert constraint
-    if (!assertAxisFlatten(ax1, ax2)) {
-        return false;
-    }
-
-    if (PlotMode) {
+#if VERBOSE_MODE
         std::cout << "angle: " << angle << std::endl;
         std::cout << "semi axis: " << ax1 << ", " << ax2 << std::endl;
-    }
+#endif
     return true;
 }
-
 
 bool RandomizedHough::findFitPoint(cv::Mat& edgeImage, cv::Point& currentPoint, int width, std::vector<cv::Point>& outputPoint) {
     std::vector<cv::Point> tmp;
@@ -157,7 +133,7 @@ std::vector<cv::Point> RandomizedHough::findIntersection(std::vector<Line>& t) {
         }
         Eigen::Vector2d x = A.colPivHouseholderQr().solve(b);
         intersection.emplace_back(x(0), x(1));
-#if ERROR_VERBOSE
+#if VERBOSE_MODE
         std::cout << "intersection " << x(0) << ", " << x(1) << std::endl;
 #endif
     }
@@ -171,7 +147,7 @@ std::vector<Line> RandomizedHough::findBisector(std::vector<cv::Point>& p, std::
         double m = (double)(mid.y - l[i].y) / (double)(mid.x - l[i].x);
         double c = (double)(mid.x * l[i].y - l[i].x * mid.y) / (double)(mid.x - l[i].x);
         Bisector.emplace_back(m, c);
-#if ERROR_VERBOSE
+#if VERBOSE_MODE
         std::cout << "Bisector " << m << ", " << c << std::endl;
 #endif
     }
@@ -190,7 +166,7 @@ bool RandomizedHough::findThisCenter(std::vector<Line>& t, cv::Point& center) {
     center.x = x(0);
     center.y = x(1);
     if (isnan(x(0)) || isnan(x(1))) return false;
-#if ERROR_VERBOSE
+#if VERBOSE_MODE
     std::cout << "center: " << x(0) << ", " << x(1) << std::endl;
 #endif
     return assertCenter(center);
@@ -211,7 +187,7 @@ double RandomizedHough::getRotationAngle(double PreA, double PreB, double PreC) 
     return angle;
 }
 
-bool RandomizedHough::getSemi(double angle, double PreA, double PreC, double& ax1, double& ax2) {
+bool RandomizedHough::getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2) {
     Eigen::Matrix2d A;
     Eigen::Vector2d b;
     A(0, 0) = sin(angle) * sin(angle);
@@ -230,7 +206,6 @@ bool RandomizedHough::getSemi(double angle, double PreA, double PreC, double& ax
         return false;
     }
 }
-
 
 bool RandomizedHough::canAccumulate(Candidate c, int& idx) {
     if (accumulator.empty()) return false;
@@ -266,22 +241,16 @@ void RandomizedHough::displayAccumulator() {
     std::cout << "**********************************" << std::endl;
 }
 
-
-/********************* assert function ****************************/
-bool RandomizedHough::assertInput() {
-    // phase
-    if (phase->empty()) throw EmptyException("phase");
-    if (phase->type() != 0) throw InputException("phase");
-
-    // mask
+bool RandomizedHough::assertImage() {
+    if (image->empty()) throw EmptyException("phase");
+    if (image->type() != 0) throw InputException("phase");
     if (mask->empty()) throw EmptyException("mask");
     if (mask->type() != 0) throw InputException("mask");
 }
 
-
 bool RandomizedHough::assertCenter(cv::Point& c) {
-    if (c.x >= phase->cols || c.x < 0) return false;
-    if (c.y >= phase->rows || c.y < 0) return false;
+    if (c.x >= image->cols || c.x < 0) return false;
+    if (c.y >= image->rows || c.y < 0) return false;
     cv::Mat TestImage(mask->size(), 0, cv::Scalar(0));
     cv::Mat OutImage(mask->size(), 0, cv::Scalar(0));
     std::vector<cv::Point> locations;
@@ -291,15 +260,17 @@ bool RandomizedHough::assertCenter(cv::Point& c) {
     return !locations.empty();
 }
 
-inline bool RandomizedHough::assertEllipse(double PreA, double PreB, double PreC) {
+inline bool RandomizedHough::IsEllipse(double PreA, double PreB, double PreC) {
     return (PreA * PreC - PreB * PreB) > 0;
 }
 
-inline bool RandomizedHough::assertAxisFlatten(double ax1, double ax2) {
-    if (ax1 < majorBoundMin || ax1 > majorBoundMax) return false;
-    if (ax2 < minorBoundMin || ax2 > minorBoundMax) return false;
-    double flattening = (ax1 - ax2) / ax1;
-    return flattening <= flatteningBound;
+inline bool RandomizedHough::isValidAxisFlattening(double ax1, double ax2) {
+    return ((ax1 - ax2) / ax1) <= _flatteningBound;
+}
+
+inline bool RandomizedHough::isValidAxisLength(double ax1, double ax2) {
+    if (ax1 < _majorBoundMin || ax1 > _majorBoundMax || ax2 < _minorBoundMin || ax2 > _minorBoundMax) return false;
+    return true;
 }
 
 bool RandomizedHough::isOutOfMask(Candidate& e) {

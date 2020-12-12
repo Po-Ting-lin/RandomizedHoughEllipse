@@ -43,7 +43,7 @@ void printCV8UImage(const cv::Mat& image) {
 }
 
 // from Mark Lakata (https://stackoverflow.com/questions/5083465/fast-efficient-least-squares-fit-algorithm-in-c)
-bool fitPoints(std::vector<cv::Point>& pts, Line& line) {
+bool findfittingPoints(std::vector<cv::Point>& pts, Line& line) {
     int nPoints = pts.size();
     if (nPoints < 2) {
         // Fail: infinitely many lines passing through this single point

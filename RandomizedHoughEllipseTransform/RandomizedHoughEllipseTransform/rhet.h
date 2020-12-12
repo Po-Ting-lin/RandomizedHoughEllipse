@@ -7,6 +7,9 @@
 #define _USE_MATH_DEFINES
 #include "math.h"
 
+#define VERBOSE_MODE false
+#define PLOT_MODE false
+
 class Candidate {
 public:
     cv::Point center;
@@ -34,70 +37,56 @@ public:
 };
 
 class RandomizedHough {
+public:
+    cv::Mat* image;
+    cv::Mat* mask;
+    std::vector<Candidate> accumulator;
+
+    explicit RandomizedHough() {
+        // TODO: parameter selection
+        maxIter = 1000;
+        _majorBoundMax = 100;
+        _majorBoundMin = 45;
+        _minorBoundMax = 100;
+        _minorBoundMin = 40;
+        _flatteningBound = 0.4;
+        _fittingArea = 7;
+        _cannyT1 = 70;
+        _cannyT2 = 120;
+        _cannySobelSize = 3;
+    };
+    void Process(cv::Mat& phase, cv::Mat& mask);
+    void Process(cv::Mat& phase, cv::Mat& mask, bool mp);
+
 protected:
     //settings
     int maxIter;
-    int majorBoundMax;
-    int majorBoundMin;
-    int minorBoundMax;
-    int minorBoundMin;
-    double flatteningBound;
-    int fittingArea;
-    double cannyT1;
-    double cannyT2;
-    int cannySobelSize;
+    int _majorBoundMax;
+    int _majorBoundMin;
+    int _minorBoundMax;
+    int _minorBoundMin;
+    double _flatteningBound;
+    int _fittingArea;
+    double _cannyT1;
+    double _cannyT2;
+    int _cannySobelSize;
 
     inline bool assertCenter(cv::Point& c);
-    bool assertInput();
-
+    bool assertImage();
     bool findCenter(std::vector<cv::Point>& shuffleP, cv::Mat&, cv::Point& center, std::vector<cv::Point>& OutP);
     bool findFitPoint(cv::Mat& edge, cv::Point& p, int width, std::vector<cv::Point>& pt);
     std::vector<cv::Point> findIntersection(std::vector<Line>& t);
     std::vector<Line> findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
     bool findThisCenter(std::vector<Line>& t, cv::Point& center);
-
     bool findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle);
     double getRotationAngle(double PreA, double PreB, double PreC);
-    bool getSemi(double angle, double PreA, double PreC, double& ax1, double& ax2);
-    inline bool assertEllipse(double PreA, double PreB, double PreC);
-    inline bool assertAxisFlatten(double ax1, double ax2);
+    bool getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2);
+    inline bool IsEllipse(double PreA, double PreB, double PreC);
+    inline bool isValidAxisLength(double ax1, double ax2);
+    inline bool isValidAxisFlattening(double ax1, double ax2);
     bool isOutOfMask(Candidate& e);
-
     bool canAccumulate(Candidate c, int& idx);
     void displayAccumulator();
-
-
-
-public:
-    cv::Mat* phase;
-    cv::Mat* mask;
-    cv::Mat* canvas;
-    cv::Mat* origin;
-
-    // accumulator
-    std::vector<Candidate> accumulator;
-
-    // debug
-    bool PlotMode;
-
-    explicit RandomizedHough(bool plotMode) {
-        // TODO: parameter selection
-        maxIter = 4000;
-        majorBoundMax = 100;
-        majorBoundMin = 45;
-        minorBoundMax = 100;
-        minorBoundMin = 40;
-        flatteningBound = 0.4;
-        fittingArea = 7;
-        cannyT1 = 70;
-        cannyT2 = 120;
-        cannySobelSize = 3;
-        PlotMode = plotMode;
-    };
-
-    void run(cv::Mat& phase, cv::Mat& mask);
-
-
 };
 
 

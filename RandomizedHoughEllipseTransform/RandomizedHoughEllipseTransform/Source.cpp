@@ -20,19 +20,13 @@ int main() {
         return -1;
     }
 
-    //displayImage(image);
-
-
-    // test
-    RandomizedHough r(false);
+    RandomizedHough rhet;
 
     auto start = std::chrono::system_clock::now();
-    r.run(image, mask);
+    rhet.Process(image, mask);
     auto end = std::chrono::system_clock::now();
 
-    // time
     std::chrono::duration<double> elapsed_seconds = end - start;
     std::cout << "time consume: " << elapsed_seconds.count() << std::endl;
-
     return 0;
 }

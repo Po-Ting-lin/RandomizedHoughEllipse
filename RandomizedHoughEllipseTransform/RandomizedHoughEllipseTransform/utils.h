@@ -25,7 +25,6 @@ namespace patch {
     }
 }
 
-
 class Line {
 public:
     double m, c;
@@ -35,15 +34,10 @@ public:
     }
 };
 
-
 void displayImage(const cv::Mat& image, bool mag = false);
-
 void printCV8UImage(const cv::Mat& image);
-
-bool fitPoints(std::vector<cv::Point>& pts, Line& line);
-
+bool findfittingPoints(std::vector<cv::Point>& pts, Line& line);
 std::string type2str(int type);
-
 void drawFullImageLine(cv::Mat& img, double slope, double intercept, cv::Scalar color);
 void drawPoint(cv::Mat& img, int x, int y, cv::Scalar color);
 void drawText(cv::Mat& img, int x, int y, std::string text);

@@ -161,7 +161,6 @@ bool RandomizedHough::_findFitPoint(cv::Mat& edgeImage, cv::Point& currentPoint,
         for (int x = currentPoint.x - width; x < currentPoint.x + width + 1; x++) {
             int pixel = edge_image_ptr[y * edgeImage.cols + x];
             if (pixel == 255) {
-                // output coordinate
                 tmp.emplace_back(x, y);
             }
         }
@@ -269,17 +268,6 @@ bool RandomizedHough::_canAccumulate(Candidate c, int& idx) {
             idx = i;
             return true;
         }
-        //double CenterDist = sqrt(pow((old.center.x - c.center.x), 2) + pow((old.center.y - c.center.y), 2));
-        //double AngleDiff = abs(old.angle - c.angle);
-        //double Angle180 = (c.angle > 0) ? c.angle - M_PI : c.angle + M_PI;
-        //double AngleDiff180 = abs(old.angle - Angle180);
-        //double AngleDist = std::min(AngleDiff, Angle180);
-        //double SemiMajorDist = abs(old.semiMajor - c.semiMajor);
-        //double SemiMinorDist = abs(old.semiMinor - c.semiMinor);
-        //if (CenterDist < 5 && AngleDist < M_PI / 18.0 && SemiMajorDist < 10 && SemiMinorDist < 10) {
-        //    idx = i;
-        //    return true;
-        //}
     }
     return false;
 }
@@ -290,10 +278,6 @@ void RandomizedHough::_displayAccumulator() {
     if (accumulator.empty()) return;
     for (Candidate& c : accumulator) {
         std::cout << c << std::endl;
-        //std::cout << "Center: " << c.center << "  ";
-        //std::cout << "Semi axis: [" << c.semiMajor << ", " << c.semiMinor << "]  ";
-        //std::cout << "Angle: " << c.angle << " ";
-        //std::cout << "Score: " << c.score << std::endl;
         count++;
         if (count > 15) break;
     }

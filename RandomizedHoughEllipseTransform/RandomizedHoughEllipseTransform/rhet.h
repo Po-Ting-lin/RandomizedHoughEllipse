@@ -48,7 +48,6 @@ public:
     void Process(cv::Mat& phase, cv::Mat& mask, CandidateInfo& dstCandidate);
 
 protected:
-    //settings
     int _maxIter;
     int _majorBoundMax;
     int _majorBoundMin;

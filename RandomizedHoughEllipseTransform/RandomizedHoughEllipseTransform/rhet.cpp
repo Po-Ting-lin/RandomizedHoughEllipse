@@ -263,7 +263,6 @@ bool RandomizedHough::_getSemiAxis(double angle, double PreA, double PreC, doubl
 bool RandomizedHough::_canAccumulate(Candidate c, int& idx) {
     if (accumulator.empty()) return false;
     for (int i = 0; i < accumulator.size(); i++) {
-        //Candidate old = accumulator[i];
         if (accumulator[i].IsDistClose(c)) {
             idx = i;
             return true;

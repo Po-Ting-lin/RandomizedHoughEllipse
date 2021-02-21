@@ -50,7 +50,7 @@ void RandomizedHough::Process(cv::Mat& src, cv::Mat& dst) {
         // accumulate
         int idx = -1;
         if (canAccumulate(candidate, idx)) {
-            accumulator[idx].averageWith(candidate);
+            accumulator[idx] <<= candidate;
         }
         else {
             accumulator.emplace_back(center, ax1, ax2, angle);

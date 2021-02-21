@@ -26,7 +26,7 @@ public:
         this->score = 1.0;
     }
 
-    void averageWith(Candidate& c) {
+    void operator<<=(Candidate c) {
         center.x = (c.center.x + center.x * score) / (score + 1.0);
         center.y = (c.center.y + center.y * score) / (score + 1.0);
         semiMajor = (c.semiMajor + semiMajor * score) / (score + 1.0);
@@ -42,7 +42,7 @@ public:
     cv::Mat* mask;
     std::vector<Candidate> accumulator;
 
-    explicit RandomizedHough() {
+    RandomizedHough() {
         // TODO: parameter selection
         maxIter = 1000;
         _majorBoundMax = 100;
@@ -65,28 +65,29 @@ protected:
     int _majorBoundMin;
     int _minorBoundMax;
     int _minorBoundMin;
-    double _flatteningBound;
+    int _cannySobelSize;
     int _fittingArea;
+    double _flatteningBound;
     double _cannyT1;
     double _cannyT2;
-    int _cannySobelSize;
 
-    inline bool assertCenter(cv::Point& c);
+    void displayAccumulator();
+
     bool assertImage();
     bool findCenter(std::vector<cv::Point>& shuffleP, cv::Mat&, cv::Point& center, std::vector<cv::Point>& OutP);
     bool findFitPoint(cv::Mat& edge, cv::Point& p, int width, std::vector<cv::Point>& pt);
-    std::vector<cv::Point> findIntersection(std::vector<Line>& t);
-    std::vector<Line> findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
     bool findThisCenter(std::vector<Line>& t, cv::Point& center);
     bool findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle);
-    double getRotationAngle(double PreA, double PreB, double PreC);
+    bool isOutOfMask(Candidate& e);
+    bool canAccumulate(Candidate c, int& idx);
     bool getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2);
+    double getRotationAngle(double PreA, double PreB, double PreC);
+    inline bool assertCenter(cv::Point& c);
     inline bool IsEllipse(double PreA, double PreB, double PreC);
     inline bool isValidAxisLength(double ax1, double ax2);
     inline bool isValidAxisFlattening(double ax1, double ax2);
-    bool isOutOfMask(Candidate& e);
-    bool canAccumulate(Candidate c, int& idx);
-    void displayAccumulator();
+    std::vector<cv::Point> findIntersection(std::vector<Line>& t);
+    std::vector<Line> findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
 };
 
 

@@ -1,40 +1,21 @@
 #pragma once
-#include "utils.h"
 #include <Eigen/Dense>
 #include <ctime>
 #include <random>
+#include <thread>
+#include <mutex>
 #include <algorithm>
+#include <opencv2/opencv.hpp>
 #define _USE_MATH_DEFINES
 #include "math.h"
+#include "utils.h"
+#include "candidate.h"
 
+#define THREAD_NUM 6
 #define VERBOSE_MODE false
 #define PLOT_MODE false
 
-class Candidate {
-public:
-    cv::Point center;
-    double semiMajor;
-    double semiMinor;
-    double angle;
-    double score;
 
-    Candidate(cv::Point& center, double semiMajor, double semiMinor, double angle) {
-        this->center = center;
-        this->semiMajor = semiMajor;
-        this->semiMinor = semiMinor;
-        this->angle = angle;
-        this->score = 1.0;
-    }
-
-    void operator<<=(Candidate c) {
-        center.x = (c.center.x + center.x * score) / (score + 1.0);
-        center.y = (c.center.y + center.y * score) / (score + 1.0);
-        semiMajor = (c.semiMajor + semiMajor * score) / (score + 1.0);
-        semiMinor = (c.semiMinor + semiMinor * score) / (score + 1.0);
-        angle = (c.angle + angle * score) / (score + 1.0);
-        score += 1;
-    }
-};
 
 class RandomizedHough {
 public:
@@ -43,8 +24,7 @@ public:
     std::vector<Candidate> accumulator;
 
     RandomizedHough() {
-        // TODO: parameter selection
-        maxIter = 1000;
+        _maxIter = 1500;
         _majorBoundMax = 100;
         _majorBoundMin = 45;
         _minorBoundMax = 100;
@@ -54,13 +34,16 @@ public:
         _cannyT1 = 70;
         _cannyT2 = 120;
         _cannySobelSize = 3;
+        _lock = new std::mutex();
     };
-    void Process(cv::Mat& phase, cv::Mat& mask);
-    void Process(cv::Mat& phase, cv::Mat& mask, bool mp);
+    ~RandomizedHough() {
+        delete _lock;
+    }
+    void Process(cv::Mat& phase, cv::Mat& mask, CandidateInfo& dstCandidate);
 
 protected:
     //settings
-    int maxIter;
+    int _maxIter;
     int _majorBoundMax;
     int _majorBoundMin;
     int _minorBoundMax;
@@ -70,29 +53,33 @@ protected:
     double _flatteningBound;
     double _cannyT1;
     double _cannyT2;
+    std::mutex* _lock;
 
-    void displayAccumulator();
-
-    bool assertImage();
-    bool findCenter(std::vector<cv::Point>& shuffleP, cv::Mat&, cv::Point& center, std::vector<cv::Point>& OutP);
-    bool findFitPoint(cv::Mat& edge, cv::Point& p, int width, std::vector<cv::Point>& pt);
-    bool findThisCenter(std::vector<Line>& t, cv::Point& center);
-    bool findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle);
-    bool isOutOfMask(Candidate& e);
-    bool canAccumulate(Candidate c, int& idx);
-    bool getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2);
-    double getRotationAngle(double PreA, double PreB, double PreC);
-    inline bool assertCenter(cv::Point& c);
-    inline bool IsEllipse(double PreA, double PreB, double PreC);
-    inline bool isValidAxisLength(double ax1, double ax2);
-    inline bool isValidAxisFlattening(double ax1, double ax2);
-    std::vector<cv::Point> findIntersection(std::vector<Line>& t);
-    std::vector<Line> findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
+    void _displayAccumulator();
+    void _accumulate(Candidate* candidate);
+    void _findCandidate(cv::Mat& image, Candidate*& dstCandidate, std::vector<cv::Point>& locations);
+    void _mainFindCandidate(cv::Mat& image, std::vector<cv::Point>& locations);
+    void _mainLoopFindCandidate(cv::Mat& image, std::vector<cv::Point>& locations, int iters);
+    bool _assertImage();
+    bool _findCenter(std::vector<cv::Point>& shuffleP, cv::Mat&, cv::Point& center, std::vector<cv::Point>& OutP);
+    bool _findFitPoint(cv::Mat& edge, cv::Point& p, int width, std::vector<cv::Point>& pt);
+    bool _findThisCenter(std::vector<Line>& t, cv::Point& center);
+    bool _findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle);
+    bool _isOutOfMask(Candidate& e);
+    bool _canAccumulate(Candidate c, int& idx);
+    bool _getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2);
+    double _getRotationAngle(double PreA, double PreB, double PreC);
+    inline bool _assertCenter(cv::Point& c);
+    inline bool _isEllipse(double PreA, double PreB, double PreC);
+    inline bool _isValidAxisLength(double ax1, double ax2);
+    inline bool _isValidAxisFlattening(double ax1, double ax2);
+    std::vector<cv::Point> _findIntersection(std::vector<Line>& t);
+    std::vector<Line> _findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
 };
 
 
 struct compareScore {
     inline bool operator() (const Candidate& c1, const Candidate& c2) {
-        return (c1.score > c2.score);
+        return (c1.candidateInfo.score > c2.candidateInfo.score);
     }
 };

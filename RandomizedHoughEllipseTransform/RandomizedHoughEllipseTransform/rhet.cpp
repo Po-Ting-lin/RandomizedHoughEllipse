@@ -2,7 +2,61 @@
 #include "rhet_exception.h"
 
 
-bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& edgeImage, cv::Point& center, std::vector<cv::Point>& pointOnEllipse) {
+void RandomizedHough::_mainLoopFindCandidate(cv::Mat& image, std::vector<cv::Point>& locations, int iters) {
+    for (int i = 0; i < iters; i++)
+        _mainFindCandidate(image, locations);
+}
+
+void RandomizedHough::_mainFindCandidate(cv::Mat& image, std::vector<cv::Point>& locations) {
+    Candidate* candidate = nullptr;
+    _findCandidate(image, candidate, locations);
+    _lock->lock();
+    if (candidate != nullptr) _accumulate(candidate);
+    _lock->unlock();
+}
+
+void RandomizedHough::_findCandidate(cv::Mat& image, Candidate*& dstCandidate, std::vector<cv::Point>& locations) {
+    cv::Point center(0.0, 0.0);
+    std::vector<cv::Point> points_on_ellipse;
+    double ax1 = 0, ax2 = 0, angle = 0;
+
+    // copy locations
+    std::vector<cv::Point> shuffle_points;
+    shuffle_points.assign(locations.begin(), locations.end());
+
+    // shuffle locations
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::shuffle(shuffle_points.begin(), shuffle_points.end(), std::default_random_engine(seed));
+
+    // find center
+    if (!_findCenter(shuffle_points, image, center, points_on_ellipse)) return;
+
+    // find semi axis
+    if (!_findAxis(points_on_ellipse, center, ax1, ax2, angle)) return;
+
+    // assert
+    Candidate* candidate = new Candidate(center.x, center.y, ax1, ax2, angle);
+    if (_isOutOfMask(*candidate)) return;
+    dstCandidate = candidate;
+}
+
+void RandomizedHough::_accumulate(Candidate* candidate) {
+    int idx = -1;
+    if (_canAccumulate(*candidate, idx)) {
+        accumulator[idx] <<= *candidate;
+    }
+    else {
+        accumulator.emplace_back(
+            candidate->candidateInfo.centerX,
+            candidate->candidateInfo.centerY,
+            candidate->candidateInfo.semiMajor,
+            candidate->candidateInfo.semiMinor,
+            candidate->candidateInfo.angle);
+    }
+    delete candidate;
+}
+
+bool RandomizedHough::_findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& edgeImage, cv::Point& center, std::vector<cv::Point>& pointOnEllipse) {
     std::vector<cv::Point> chosen_point;
     std::vector<Line> tan_line;
     std::vector<cv::Point> intersection;
@@ -12,7 +66,7 @@ bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& 
     for (cv::Point& current_point : shufflePoint) {
         // loop crop image, find where == 255
         std::vector<cv::Point> fit_point;
-        if (!findFitPoint(edgeImage, current_point, width, fit_point)) {
+        if (!_findFitPoint(edgeImage, current_point, width, fit_point)) {
 #if VERBOSE_MODE
             printf("Fitting points are less than two!\n");
 #endif
@@ -37,10 +91,10 @@ bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& 
 
         if (tan_line.size() == 3) break;
     }
-    intersection = findIntersection(tan_line);
-    bisector = findBisector(chosen_point, intersection);
+    intersection = _findIntersection(tan_line);
+    bisector = _findBisector(chosen_point, intersection);
     bool is_success = false;
-    if (findThisCenter(bisector, center)) {
+    if (_findThisCenter(bisector, center)) {
         pointOnEllipse.assign(chosen_point.begin(), chosen_point.end());
         is_success = true;
     }
@@ -65,7 +119,7 @@ bool RandomizedHough::findCenter(std::vector<cv::Point>& shufflePoint, cv::Mat& 
     return is_success;
 }
 
-bool RandomizedHough::findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle) {
+bool RandomizedHough::_findAxis(std::vector<cv::Point>& threeP, cv::Point& center, double& ax1, double& ax2, double& angle) {
     // shift to origin
     for (cv::Point& eachP : threeP) {
         eachP.x = eachP.x - center.x;
@@ -87,11 +141,11 @@ bool RandomizedHough::findAxis(std::vector<cv::Point>& threeP, cv::Point& center
     PreB = x(1);
     PreC = x(2);
 
-    if (!IsEllipse(PreA, PreB, PreC)) return false;
-    angle = getRotationAngle(PreA, PreB, PreC);
-    if (!getSemiAxis(angle, PreA, PreC, ax1, ax2)) return false;
-    if (!isValidAxisFlattening(ax1, ax2)) return false;
-    if (!isValidAxisLength(ax1, ax2)) return false;
+    if (!_isEllipse(PreA, PreB, PreC)) return false;
+    angle = _getRotationAngle(PreA, PreB, PreC);
+    if (!_getSemiAxis(angle, PreA, PreC, ax1, ax2)) return false;
+    if (!_isValidAxisFlattening(ax1, ax2)) return false;
+    if (!_isValidAxisLength(ax1, ax2)) return false;
 
 #if VERBOSE_MODE
         std::cout << "angle: " << angle << std::endl;
@@ -100,7 +154,7 @@ bool RandomizedHough::findAxis(std::vector<cv::Point>& threeP, cv::Point& center
     return true;
 }
 
-bool RandomizedHough::findFitPoint(cv::Mat& edgeImage, cv::Point& currentPoint, int width, std::vector<cv::Point>& outputPoint) {
+bool RandomizedHough::_findFitPoint(cv::Mat& edgeImage, cv::Point& currentPoint, int width, std::vector<cv::Point>& outputPoint) {
     std::vector<cv::Point> tmp;
     uchar* edge_image_ptr = edgeImage.data;
     for (int y = currentPoint.y - width; y < currentPoint.y + width + 1; y++) {
@@ -121,7 +175,7 @@ bool RandomizedHough::findFitPoint(cv::Mat& edgeImage, cv::Point& currentPoint, 
     }
 }
 
-std::vector<cv::Point> RandomizedHough::findIntersection(std::vector<Line>& t) {
+std::vector<cv::Point> RandomizedHough::_findIntersection(std::vector<Line>& t) {
     Eigen::Matrix2d A;
     Eigen::Vector2d b;
     std::vector<cv::Point> intersection;
@@ -140,7 +194,7 @@ std::vector<cv::Point> RandomizedHough::findIntersection(std::vector<Line>& t) {
     return intersection;
 }
 
-std::vector<Line> RandomizedHough::findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l) {
+std::vector<Line> RandomizedHough::_findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l) {
     std::vector<Line> Bisector;
     for (int i = 0; i < 2; i++) {
         cv::Point mid((double)(p[i].x + p[i + 1].x) / 2.0, (double)(p[i].y + p[i + 1].y) / 2.0);
@@ -154,7 +208,7 @@ std::vector<Line> RandomizedHough::findBisector(std::vector<cv::Point>& p, std::
     return Bisector;
 }
 
-bool RandomizedHough::findThisCenter(std::vector<Line>& t, cv::Point& center) {
+bool RandomizedHough::_findThisCenter(std::vector<Line>& t, cv::Point& center) {
     Eigen::Matrix2d A;
     Eigen::Vector2d b;
     for (int i = 0; i < 2; i++) {
@@ -169,10 +223,10 @@ bool RandomizedHough::findThisCenter(std::vector<Line>& t, cv::Point& center) {
 #if VERBOSE_MODE
     std::cout << "center: " << x(0) << ", " << x(1) << std::endl;
 #endif
-    return assertCenter(center);
+    return _assertCenter(center);
 }
 
-double RandomizedHough::getRotationAngle(double PreA, double PreB, double PreC) {
+double RandomizedHough::_getRotationAngle(double PreA, double PreB, double PreC) {
     double angle = 0.0;
     if (PreA == PreC) {
         angle = 0.0;
@@ -187,7 +241,7 @@ double RandomizedHough::getRotationAngle(double PreA, double PreB, double PreC) 
     return angle;
 }
 
-bool RandomizedHough::getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2) {
+bool RandomizedHough::_getSemiAxis(double angle, double PreA, double PreC, double& ax1, double& ax2) {
     Eigen::Matrix2d A;
     Eigen::Vector2d b;
     A(0, 0) = sin(angle) * sin(angle);
@@ -207,48 +261,53 @@ bool RandomizedHough::getSemiAxis(double angle, double PreA, double PreC, double
     }
 }
 
-bool RandomizedHough::canAccumulate(Candidate c, int& idx) {
+bool RandomizedHough::_canAccumulate(Candidate c, int& idx) {
     if (accumulator.empty()) return false;
     for (int i = 0; i < accumulator.size(); i++) {
-        Candidate old = accumulator[i];
-        double CenterDist = sqrt(pow((old.center.x - c.center.x), 2) + pow((old.center.y - c.center.y), 2));
-        double AngleDiff = abs(old.angle - c.angle);
-        double Angle180 = (c.angle > 0) ? c.angle - M_PI : c.angle + M_PI;
-        double AngleDiff180 = abs(old.angle - Angle180);
-        double AngleDist = std::min(AngleDiff, Angle180);
-        double SemiMajorDist = abs(old.semiMajor - c.semiMajor);
-        double SemiMinorDist = abs(old.semiMinor - c.semiMinor);
-        if (CenterDist < 5 && AngleDist < M_PI / 18.0 && SemiMajorDist < 10 && SemiMinorDist < 10) {
+        //Candidate old = accumulator[i];
+        if (accumulator[i].IsDistClose(c)) {
             idx = i;
             return true;
         }
+        //double CenterDist = sqrt(pow((old.center.x - c.center.x), 2) + pow((old.center.y - c.center.y), 2));
+        //double AngleDiff = abs(old.angle - c.angle);
+        //double Angle180 = (c.angle > 0) ? c.angle - M_PI : c.angle + M_PI;
+        //double AngleDiff180 = abs(old.angle - Angle180);
+        //double AngleDist = std::min(AngleDiff, Angle180);
+        //double SemiMajorDist = abs(old.semiMajor - c.semiMajor);
+        //double SemiMinorDist = abs(old.semiMinor - c.semiMinor);
+        //if (CenterDist < 5 && AngleDist < M_PI / 18.0 && SemiMajorDist < 10 && SemiMinorDist < 10) {
+        //    idx = i;
+        //    return true;
+        //}
     }
     return false;
 }
 
-void RandomizedHough::displayAccumulator() {
+void RandomizedHough::_displayAccumulator() {
     std::cout << "********** Accumulator ***********" << std::endl;
     int count = 0;
     if (accumulator.empty()) return;
     for (Candidate& c : accumulator) {
-        std::cout << "Center: " << c.center << "  ";
-        std::cout << "Semi axis: [" << c.semiMajor << ", " << c.semiMinor << "]  ";
-        std::cout << "Angle: " << c.angle << " ";
-        std::cout << "Score: " << c.score << std::endl;
+        std::cout << c << std::endl;
+        //std::cout << "Center: " << c.center << "  ";
+        //std::cout << "Semi axis: [" << c.semiMajor << ", " << c.semiMinor << "]  ";
+        //std::cout << "Angle: " << c.angle << " ";
+        //std::cout << "Score: " << c.score << std::endl;
         count++;
         if (count > 15) break;
     }
     std::cout << "**********************************" << std::endl;
 }
 
-bool RandomizedHough::assertImage() {
+bool RandomizedHough::_assertImage() {
     if (image->empty()) throw EmptyException("phase");
     if (image->type() != 0) throw InputException("phase");
     if (mask->empty()) throw EmptyException("mask");
     if (mask->type() != 0) throw InputException("mask");
 }
 
-bool RandomizedHough::assertCenter(cv::Point& c) {
+bool RandomizedHough::_assertCenter(cv::Point& c) {
     if (c.x >= image->cols || c.x < 0) return false;
     if (c.y >= image->rows || c.y < 0) return false;
     cv::Mat TestImage(mask->size(), 0, cv::Scalar(0));
@@ -260,25 +319,26 @@ bool RandomizedHough::assertCenter(cv::Point& c) {
     return !locations.empty();
 }
 
-inline bool RandomizedHough::IsEllipse(double PreA, double PreB, double PreC) {
+inline bool RandomizedHough::_isEllipse(double PreA, double PreB, double PreC) {
     return (PreA * PreC - PreB * PreB) > 0;
 }
 
-inline bool RandomizedHough::isValidAxisFlattening(double ax1, double ax2) {
+inline bool RandomizedHough::_isValidAxisFlattening(double ax1, double ax2) {
     return ((ax1 - ax2) / ax1) <= _flatteningBound;
 }
 
-inline bool RandomizedHough::isValidAxisLength(double ax1, double ax2) {
+inline bool RandomizedHough::_isValidAxisLength(double ax1, double ax2) {
     if (ax1 < _majorBoundMin || ax1 > _majorBoundMax || ax2 < _minorBoundMin || ax2 > _minorBoundMax) return false;
     return true;
 }
 
-bool RandomizedHough::isOutOfMask(Candidate& e) {
+bool RandomizedHough::_isOutOfMask(Candidate& e) {
     cv::Mat TestImage(mask->size(), 0, cv::Scalar(0));
     cv::Mat OutImage(mask->size(), 0, cv::Scalar(0));
     cv::Mat AntiMask(mask->size(), 0, cv::Scalar(0));
     std::vector<cv::Point> locations;
-    ellipse(TestImage, e.center, cv::Size(e.semiMajor, e.semiMinor), e.angle * 180.0 / M_PI, 0, 360, 255, 1);
+    cv::Point center(e.candidateInfo.centerX, e.candidateInfo.centerY);
+    ellipse(TestImage, center, cv::Size(e.candidateInfo.semiMajor, e.candidateInfo.semiMinor), e.candidateInfo.angle * 180.0 / M_PI, 0, 360, 255, 1);
     bitwise_not(*mask, AntiMask);
     bitwise_and(TestImage, TestImage, OutImage, AntiMask);
     findNonZero(OutImage, locations);

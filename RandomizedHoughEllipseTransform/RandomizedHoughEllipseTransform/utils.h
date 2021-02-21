@@ -2,19 +2,7 @@
 #include <opencv2/opencv.hpp>
 #include <algorithm>
 #include <iostream>
-#define REAL double
 
-//class Pt {
-//public:
-//    double x, y;
-//    Pt(double x, double y){
-//        this->x = x;
-//        this->y = x;
-//    }
-//    bool operator==(Pt &a){
-//        return a.x == this->x && a.y == this->y;
-//    };
-//};
 
 namespace patch {
     template < typename T >

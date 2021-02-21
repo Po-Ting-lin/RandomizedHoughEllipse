@@ -21,9 +21,9 @@ int main() {
     }
 
     RandomizedHough rhet;
-
+    CandidateInfo candidateInfo;
     auto start = std::chrono::system_clock::now();
-    rhet.Process(image, mask);
+    rhet.Process(image, mask, candidateInfo);
     auto end = std::chrono::system_clock::now();
 
     std::chrono::duration<double> elapsed_seconds = end - start;

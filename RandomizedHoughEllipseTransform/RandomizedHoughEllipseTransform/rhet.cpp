@@ -47,11 +47,11 @@ void RandomizedHough::_accumulate(Candidate* candidate) {
     }
     else {
         accumulator.emplace_back(
-            candidate->candidateInfo.centerX,
-            candidate->candidateInfo.centerY,
-            candidate->candidateInfo.semiMajor,
-            candidate->candidateInfo.semiMinor,
-            candidate->candidateInfo.angle);
+            candidate->candidateInfo.X,
+            candidate->candidateInfo.Y,
+            candidate->candidateInfo.SemiMajor,
+            candidate->candidateInfo.SemiMinor,
+            candidate->candidateInfo.Angle);
     }
     delete candidate;
 }
@@ -337,8 +337,8 @@ bool RandomizedHough::_isOutOfMask(Candidate& e) {
     cv::Mat OutImage(mask->size(), 0, cv::Scalar(0));
     cv::Mat AntiMask(mask->size(), 0, cv::Scalar(0));
     std::vector<cv::Point> locations;
-    cv::Point center(e.candidateInfo.centerX, e.candidateInfo.centerY);
-    ellipse(TestImage, center, cv::Size(e.candidateInfo.semiMajor, e.candidateInfo.semiMinor), e.candidateInfo.angle * 180.0 / M_PI, 0, 360, 255, 1);
+    cv::Point center(e.candidateInfo.X, e.candidateInfo.Y);
+    ellipse(TestImage, center, cv::Size(e.candidateInfo.SemiMajor, e.candidateInfo.SemiMinor), e.candidateInfo.Angle * 180.0 / M_PI, 0, 360, 255, 1);
     bitwise_not(*mask, AntiMask);
     bitwise_and(TestImage, TestImage, OutImage, AntiMask);
     findNonZero(OutImage, locations);

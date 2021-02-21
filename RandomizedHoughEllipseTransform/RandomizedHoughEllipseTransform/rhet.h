@@ -16,6 +16,12 @@
 #define PLOT_MODE false
 
 
+struct compareScore {
+    inline bool operator() (const Candidate& c1, const Candidate& c2) {
+        return (c1.candidateInfo.Score > c2.candidateInfo.Score);
+    }
+};
+
 
 class RandomizedHough {
 public:
@@ -77,9 +83,3 @@ protected:
     std::vector<Line> _findBisector(std::vector<cv::Point>& p, std::vector<cv::Point>& l);
 };
 
-
-struct compareScore {
-    inline bool operator() (const Candidate& c1, const Candidate& c2) {
-        return (c1.candidateInfo.score > c2.candidateInfo.score);
-    }
-};
